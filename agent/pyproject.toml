@@ -1,0 +1,65 @@
+[project]
+name = "praxis-agent"
+version = "0.1.0"
+description = "Praxis: an autonomous quantitative trading agent framework for on-chain markets — signals, strategies, regime-aware meta-policy, risk gating, and execution."
+authors = [
+    { name = "Aditya Kammati", email = "dev@adityakammati.me" }
+]
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+[project.urls]
+Homepage = "https://github.com/Adi-gitX/Praxis"
+Repository = "https://github.com/Adi-gitX/Praxis"
+
+[tool.poetry]
+name = "praxis-agent"
+version = "0.1.0"
+description = "Praxis: an autonomous quantitative trading agent framework for on-chain markets."
+authors = ["Aditya Kammati <dev@adityakammati.me>"]
+readme = "README.md"
+license = "MIT"
+packages = [{ include = "praxis", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+numpy = "^2.2.2"
+pandas = "^2.2.3"
+scipy = "^1.14.1"
+pydantic = "^2.9.2"
+pyyaml = "^6.0.2"
+python-dotenv = "^1.0.1"
+fastapi = "^0.115.8"
+uvicorn = "^0.34.0"
+httpx = "^0.28.1"
+langgraph = "^0.2.69"
+langchain-core = "^0.3.33"
+langchain-openai = "^0.2.14"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+pytest-asyncio = "^0.24.0"
+ruff = "^0.7.4"
+mypy = "^1.13.0"
+pandas-stubs = "^3.0.0.260204"
+types-pyyaml = "^6.0.12.20260408"
+ccxt = "^4.5.51"
+jupyter = "^1.1.1"
+nbconvert = "^7.17.1"
+nbformat = "^5.10.4"
+ipykernel = "^7.2.0"
+matplotlib = "^3.10.9"
+pyarrow = "^24.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
