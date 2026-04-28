@@ -1,0 +1,21 @@
+name: vol_target_majors
+strategy: vol_target
+universe: [BTC, ETH, SOL, AVAX]
+start: "2024-01-01"
+end: "2024-12-31"
+initial_cash: 1000000.0
+rebalance: 1D
+seed: 42
+fee_bps: 5.0
+slippage_bps: 10.0
+strategy_params:
+  target_vol: 0.20
+  vol_lookback: 30
+  gross: 1.0
+  per_asset_cap: 0.4
+risk:
+  max_drawdown: 0.20
+  per_asset_cap: 0.40
+  gross_cap: 1.5
+  net_cap: 1.5
+  kelly_fraction: 0.25

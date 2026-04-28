@@ -1,0 +1,21 @@
+name: trend_following_btc_eth_sol
+strategy: trend_following
+universe: [BTC, ETH, SOL]
+start: "2024-01-01"
+end: "2024-12-31"
+initial_cash: 1000000.0
+rebalance: 1D
+seed: 42
+fee_bps: 5.0
+slippage_bps: 10.0
+strategy_params:
+  lookback: 60
+  vol_lookback: 30
+  per_asset_cap: 0.5
+  gross_target: 1.0
+risk:
+  max_drawdown: 0.25
+  per_asset_cap: 0.30
+  gross_cap: 2.0
+  net_cap: 1.5
+  kelly_fraction: 0.25
