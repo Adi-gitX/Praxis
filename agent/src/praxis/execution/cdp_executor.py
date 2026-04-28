@@ -1,0 +1,125 @@
+"""Executors — `PaperExecutor` is the default for backtest and paper-trade modes;
+`CDPExecutor` is the live-trading wrapper around Coinbase's Developer Platform
+SDK. Both implement the same interface so the engine doesn't care which is
+running.
+"""
+from __future__ import annotations
+
+import logging
+import os
+from dataclasses import dataclass, field
+from typing import Protocol
+
+from praxis.execution.slippage import LinearImpact
+from praxis.types import Order, Position, Side
+
+log = logging.getLogger(__name__)
+
+
+@dataclass
+class Fill:
+    order: Order
+    fill_price: float
+    fill_quantity: float
+    fee_paid: float
+    slippage_bps: float
+
+
+class Executor(Protocol):
+    def execute(self, order: Order, mark: float, liquidity: float) -> Fill | None: ...
+
+
+@dataclass
+class PaperExecutor:
+    """Simulated fills. Slippage is applied against `mark` on the side that hurts
+    the order, fees are charged in bps, and fills are deterministic given inputs.
+    """
+
+    fee_bps: float = 5.0
+    impact: LinearImpact = field(default_factory=LinearImpact)
+    fills: list[Fill] = field(default_factory=list)
+
+    def execute(self, order: Order, mark: float, liquidity: float) -> Fill | None:
+        if mark <= 0 or order.quantity <= 0:
+            return None
+        slippage_bps = self.impact.estimate(notional=order.notional, liquidity=liquidity)
+        slip_factor = slippage_bps / 10_000.0
+        fill_price = mark * (1 + slip_factor) if order.side == Side.BUY else mark * (1 - slip_factor)
+        fee = order.notional * (self.fee_bps / 10_000.0)
+        fill = Fill(
+            order=order,
+            fill_price=fill_price,
+            fill_quantity=order.quantity,
+            fee_paid=fee,
+            slippage_bps=slippage_bps,
+        )
+        self.fills.append(fill)
+        return fill
+
+    @staticmethod
+    def apply_fill(positions: dict[str, Position], fill: Fill) -> float:
+        """Mutate positions and return signed cash delta (negative => cash spent)."""
+        order = fill.order
+        signed_qty = fill.fill_quantity if order.side == Side.BUY else -fill.fill_quantity
+        existing = positions.get(order.asset)
+        if existing is None:
+            positions[order.asset] = Position(
+                asset=order.asset, quantity=signed_qty, avg_price=fill.fill_price
+            )
+        else:
+            new_qty = existing.quantity + signed_qty
+            if new_qty == 0:
+                del positions[order.asset]
+            else:
+                if (existing.quantity > 0 and signed_qty > 0) or (
+                    existing.quantity < 0 and signed_qty < 0
+                ):
+                    total_cost = existing.quantity * existing.avg_price + signed_qty * fill.fill_price
+                    existing.avg_price = total_cost / new_qty
+                existing.quantity = new_qty
+        cash_delta = -signed_qty * fill.fill_price - fill.fee_paid
+        return cash_delta
+
+
+class CDPExecutor:
+    """Live executor — wraps `cdp_sdk` for swaps on Base. Disabled by default;
+    requires `CDP_API_KEY_ID` and `CDP_API_KEY_SECRET` in the environment. In
+    the absence of credentials this raises rather than silently returning fake
+    fills, so the system never confuses paper and live modes.
+    """
+
+    def __init__(self, network: str = "base-sepolia") -> None:
+        self.network = network
+        self._client: object | None = None
+        if os.getenv("CDP_API_KEY_ID") and os.getenv("CDP_API_KEY_SECRET"):
+            self._client = self._init_client()
+        else:
+            log.warning("CDPExecutor created without credentials; live execute() will raise.")
+
+    def _init_client(self) -> object:
+        try:
+            from cdp import Cdp  # type: ignore[import-not-found]
+        except ImportError as exc:
+            raise RuntimeError(
+                "cdp-sdk is not installed; add it to your environment or use PaperExecutor."
+            ) from exc
+        configure = getattr(Cdp, "configure")
+        return configure(
+            api_key_id=os.environ["CDP_API_KEY_ID"],
+            api_key_secret=os.environ["CDP_API_KEY_SECRET"],
+        )
+
+    def execute(self, order: Order, mark: float, liquidity: float) -> Fill | None:
+        if self._client is None:
+            raise RuntimeError(
+                "CDPExecutor has no credentials configured. Either set CDP_API_KEY_* "
+                "in the environment or run with PaperExecutor."
+            )
+        # Live integration is intentionally minimal in this scaffold; a full
+        # implementation would build a swap intent against a DEX router and
+        # submit via the configured CDP wallet. We surface the structure here
+        # so the wiring is obvious; the operator must opt into live trading
+        # explicitly via CLI flag.
+        raise NotImplementedError(
+            "Live CDP swap execution is not enabled in this build. Use --mode paper."
+        )
