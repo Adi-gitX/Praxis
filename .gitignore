@@ -1,0 +1,57 @@
+# OS
+.DS_Store
+
+# Env
+*.env
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+.venv/
+venv/
+
+# Node / Next
+node_modules/
+.next/
+out/
+.vercel/
+
+# Hardhat / Foundry
+artifacts/
+cache/
+typechain-types/
+coverage/
+coverage.json
+ignition/deployments/
+
+# Editors
+.idea/
+.vscode/
+
+# Praxis runtime artifacts
+agent/data/
+agent/seeds/
+agent/runs/
+agent/.cache/
+agent/.praxis_cache/
+research/.praxis_cache/
+research/.ipynb_checkpoints/
+research/__pycache__/
+contracts/typechain-types/
+
+# Backtest run dumps — keep new runs local. The committed demo run
+# under runs/20260430T122652Z_aed954c8/ is intentional and stays.
+runs/*
+!runs/20260430T122652Z_aed954c8/
+!runs/20260430T122652Z_aed954c8/**
