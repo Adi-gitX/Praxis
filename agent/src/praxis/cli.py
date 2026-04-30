@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Any, cast
@@ -116,14 +117,61 @@ def cmd_backtest(args: argparse.Namespace) -> int:
 
 
 def cmd_paper_trade(args: argparse.Namespace) -> int:
-    log.warning("Paper-trade live mode is wired but disabled in this scaffold; "
-                "use `backtest` against historical data for now.")
+    if args.live:
+        # Triple-print so an operator scanning logs cannot miss it.
+        log.warning("=" * 72)
+        log.warning("LIVE EXECUTION ARMED — real on-chain transactions WILL be sent.")
+        log.warning("Unset PRAXIS_LIVE or omit --live to return to paper mode.")
+        log.warning("=" * 72)
+        os.environ["PRAXIS_LIVE"] = "1"
+    else:
+        os.environ.pop("PRAXIS_LIVE", None)
+        log.info("Paper-trade mode (default). No on-chain transactions.")
+    log.warning(
+        "Live tick stream not wired in this scaffold; the CDP execution path is "
+        "reachable but no signal generator is feeding it. v0.2 wires "
+        "ccxt.watch_ohlcv into the engine step loop."
+    )
     return 0
 
 
 def cmd_list_strategies(_: argparse.Namespace) -> int:
     for name in STRATEGY_REGISTRY:
         print(name)
+    return 0
+
+
+def cmd_review(args: argparse.Namespace) -> int:
+    """Run the multi-persona LLM hypothesis review against a YAML hypothesis spec.
+
+    Writes the rendered review to `<output>` (default `research/<id>_review.md`).
+    Falls back to deterministic stubs when `OPENAI_API_KEY` is unset; the stubs
+    are clearly labelled so a reviewer of the rendered Markdown is never
+    misled.
+    """
+    import yaml
+
+    from praxis.review import HypothesisReview, run_review
+
+    spec_path = Path(args.spec)
+    spec_raw = yaml.safe_load(spec_path.read_text())
+    hyp = HypothesisReview(
+        id=spec_raw["id"],
+        title=spec_raw["title"],
+        statement=spec_raw["statement"],
+        data=spec_raw.get("data", ""),
+        method=spec_raw.get("method", ""),
+        n_trials=int(spec_raw.get("n_trials", 6)),
+        dsr_threshold=float(spec_raw.get("dsr_threshold", 0.5)),
+    )
+    result = run_review(hyp, model=args.model)
+    md = result.as_markdown(hyp)
+
+    out_path = Path(args.output) if args.output else (spec_path.parent / f"{hyp.id}_review.md")
+    out_path.write_text(md)
+    log.info("wrote %s (recommendation=%s)", out_path, result.recommendation)
+    print(f"recommendation: {result.recommendation.upper()}")
+    print(f"output:         {out_path}")
     return 0
 
 
@@ -143,10 +191,28 @@ def main(argv: list[str] | None = None) -> int:
 
     pt = sub.add_parser("paper-trade", help="Live paper-trading mode (placeholder).")
     pt.add_argument("--config", required=True)
+    pt.add_argument(
+        "--live",
+        action="store_true",
+        help=(
+            "DANGEROUS: arm live CDP execution. Without this flag the agent "
+            "refuses to send real on-chain transactions even if creds are set. "
+            "Sets PRAXIS_LIVE=1 in the process env."
+        ),
+    )
     pt.set_defaults(fn=cmd_paper_trade)
 
     ls = sub.add_parser("strategies", help="List available strategies.")
     ls.set_defaults(fn=cmd_list_strategies)
+
+    rv = sub.add_parser(
+        "review",
+        help="Run the multi-persona LLM hypothesis review against a YAML spec.",
+    )
+    rv.add_argument("--spec", required=True, help="Path to hypothesis YAML.")
+    rv.add_argument("--output", default=None, help="Output Markdown path; defaults to research/<id>_review.md.")
+    rv.add_argument("--model", default="gpt-4o-mini", help="OpenAI model id; gpt-4o-mini is plenty.")
+    rv.set_defaults(fn=cmd_review)
 
     args = parser.parse_args(argv)
     return cast(int, args.fn(args))

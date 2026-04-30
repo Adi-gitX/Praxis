@@ -1,5 +1,9 @@
 """End-to-end smoke test on synthetic prices — does the full pipeline run?
 
+Also covers the live-execution opt-in: CDPExecutor must refuse to send a
+real transaction unless `PRAXIS_LIVE` is set, even when credentials are
+present. This is the explicit safety boundary documented in cdp_executor.py.
+
 This test never hits the network. It generates a deterministic price grid,
 runs trend-following through the engine + risk gate + paper executor, and
 asserts the equity curve has the right shape and no NaNs leaked through.
@@ -107,3 +111,34 @@ def test_walk_forward_produces_folds() -> None:
     assert len(folds) >= 2
     for col in ("sharpe", "max_drawdown", "total_return"):
         assert col in folds.columns
+
+
+def test_cdp_executor_refuses_without_live_arm(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Even with credentials present, CDPExecutor must refuse to execute
+    until PRAXIS_LIVE is explicitly set. This is the documented safety
+    boundary — never send a real transaction by accident.
+    """
+    from datetime import datetime
+
+    from praxis.execution.cdp_executor import CDPExecutor
+    from praxis.types import Order, Side
+
+    monkeypatch.setenv("CDP_API_KEY_ID", "test")
+    monkeypatch.setenv("CDP_API_KEY_SECRET", "test")
+    monkeypatch.delenv("PRAXIS_LIVE", raising=False)
+
+    executor = CDPExecutor.__new__(CDPExecutor)  # bypass __init__ which would try to import cdp
+    executor.network = "base-sepolia"
+    executor._client = object()  # fake "configured" client
+
+    order = Order(
+        asset="BTC",
+        side=Side.BUY,
+        quantity=0.01,
+        notional=1000.0,
+        ts=datetime.now(),
+        strategy="test",
+    )
+
+    with pytest.raises(RuntimeError, match="PRAXIS_LIVE"):
+        executor.execute(order, mark=100_000.0, liquidity=1e9)

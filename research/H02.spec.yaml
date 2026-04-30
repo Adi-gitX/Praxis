@@ -1,0 +1,17 @@
+id: H02
+title: BTC/ETH stat-arb log-spread mean-reversion
+statement: >-
+  The log-spread between BTC and ETH (with online-OLS beta over a 60-day
+  rolling window) generates a deflated Sharpe > 0.3 over 2024 daily Binance
+  data after 10 bps/side, with z-entry 2.0 and z-exit 0.5.
+data: >-
+  Binance BTC/USDT and ETH/USDT daily klines, 2024-01-01 → 2024-12-31
+  (366 bars), via ccxt. Cached to parquet.
+method: >-
+  spread = log(BTC) − β · log(ETH) with β fitted by rolling cov/var over
+  60 days; enter |z| > 2.0, exit |z| < 0.5; equal-weight legs at 0.5;
+  10 bps/side on every change in absolute leg weight; .shift(1)-safe.
+  Validation via PurgedKFold(k=5, label_horizon=20, embargo_pct=0.01).
+  Deflation against N=6 trials.
+n_trials: 6
+dsr_threshold: 0.3

@@ -1,0 +1,17 @@
+id: H05
+title: HMM volatility regime
+statement: >-
+  A 2-state Gaussian HMM fit on (log-return, 24h realized vol) of BTCUSDT 1h
+  bars identifies regimes that materially improve the risk-adjusted return of
+  a momentum-z-score sleeve, after 10 bps/side and after deflation for 6
+  trial hypotheses.
+data: >-
+  Binance BTCUSDT 1h klines, 2024-05-10 → 2026-04-30 (17,281 bars), via ccxt.
+  Cached to parquet for offline-deterministic re-runs.
+method: >-
+  size_t = sign(mom_z_168h) · clip(|mom_z|/2, 0, 1); high-vol regime scaled
+  ×0.25; .shift(1) before applying. 10 bps/side fees on every change in size.
+  Validation via PurgedKFold(k=5, label_horizon=168, embargo_pct=0.01).
+  Deflation against N=6 trials. 10,000-iter block bootstrap, block=24h.
+n_trials: 6
+dsr_threshold: 0.5

@@ -1,21 +1,22 @@
-"use client";
-
-import { useState } from "react";
-
 import { Card } from "@/components/card";
 import { Nav } from "@/components/nav";
 import { StatBlock } from "@/components/stat-block";
 import { StatusPill } from "@/components/status-pill";
+import { VaultFlow } from "@/components/vault-flow";
+import { Web3Providers } from "@/components/web3-providers";
 import { fmtNum, fmtUSD } from "@/lib/format";
 
+// wagmi/RainbowKit need a browser environment (localStorage, window). Tag
+// the page dynamic so Next.js skips static prerender at build time.
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 export default function VaultPage() {
-  const [tab, setTab] = useState<"deposit" | "withdraw">("deposit");
-  const [amount, setAmount] = useState("");
+  // Static panel data — these stay seeded until the contracts are deployed
+  // and indexed; the VaultFlow card on the right is fully live via wagmi.
   const aum = 4_217_512.04;
   const sharePrice = 1.0421;
   const totalShares = aum / sharePrice;
-  const myShares = 14_281;
-  const myValue = myShares * sharePrice;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -25,20 +26,22 @@ export default function VaultPage() {
           <div>
             <span className="label">vault</span>
             <h1 className="mt-1 text-2xl text-text-primary">PraxisVault · ERC-4626</h1>
-            <p className="text-xs text-text-tertiary mono mt-1">base-sepolia · proxy 0x… (placeholder)</p>
+            <p className="text-xs text-text-tertiary mono mt-1">
+              base-sepolia · set NEXT_PUBLIC_VAULT_ADDRESS_TESTNET after deploy
+            </p>
           </div>
           <StatusPill status="paper" />
         </header>
 
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card label="AUM"><StatBlock label="usdc" value={fmtUSD(aum, 0)} size="sm" /></Card>
+          <Card label="AUM"><StatBlock label="usdc · indicative" value={fmtUSD(aum, 0)} size="sm" /></Card>
           <Card label="SHARE PRICE"><StatBlock label="convertToAssets(1e18)" value={fmtNum(sharePrice, 4)} size="sm" /></Card>
-          <Card label="TOTAL SUPPLY"><StatBlock label="shares" value={fmtNum(totalShares, 0)} size="sm" /></Card>
+          <Card label="TOTAL SUPPLY"><StatBlock label="shares · indicative" value={fmtNum(totalShares, 0)} size="sm" /></Card>
           <Card label="EMERGENCY"><StatBlock label="halt status" value="LIVE" size="sm" tone="pos" /></Card>
         </section>
 
-        <section className="grid grid-cols-1 md:grid-cols-[1fr_320px] gap-4">
-          <Card label="RECENT FLOW">
+        <section className="grid grid-cols-1 md:grid-cols-[1fr_360px] gap-4">
+          <Card label="recent flow · indicative">
             <ul className="text-sm divide-y divide-border-subtle">
               {FLOWS.map((f, i) => (
                 <li key={i} className="flex items-center justify-between py-2">
@@ -51,52 +54,17 @@ export default function VaultPage() {
                 </li>
               ))}
             </ul>
-          </Card>
-
-          <Card label={tab === "deposit" ? "deposit · usdc" : "withdraw · shares"}>
-            <div className="flex gap-2 mb-4 border-b border-border-subtle">
-              {(["deposit", "withdraw"] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  className={
-                    "px-3 py-2 text-sm mono " +
-                    (tab === t
-                      ? "text-text-primary border-b border-accent"
-                      : "text-text-secondary")
-                  }
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-
-            <label className="block text-sm">
-              <span className="label">amount</span>
-              <input
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                className="mt-1 w-full bg-bg-overlay border border-border-default px-3 py-2 mono"
-              />
-            </label>
-
-            <div className="mt-4 space-y-2 text-sm">
-              <Row label="your shares" value={fmtNum(myShares, 0)} />
-              <Row label="your value" value={fmtUSD(myValue, 2)} />
-              <Row label="share price" value={fmtNum(sharePrice, 4)} />
-              <Row label="entry fee" value="0.00%" />
-              <Row label="exit fee" value="0.10%" />
-            </div>
-
-            <button className="mt-5 w-full px-3 py-2.5 bg-accent hover:bg-accent-hover text-bg-base mono text-sm transition-colors">
-              {tab === "deposit" ? "deposit usdc" : "withdraw shares"}
-            </button>
-            <p className="mt-3 text-2xs text-text-tertiary leading-relaxed">
-              Wallet flow is wagmi-stubbed in this scaffold. Connect support is wired in
-              `lib/wagmi` once a contract is redeployed.
+            <p className="mt-4 text-2xs text-text-tertiary leading-relaxed">
+              The flow list above is indicative until an indexer is wired (v0.2 roadmap).
+              The deposit/withdraw card to the right is *fully live* via wagmi + RainbowKit
+              — connect a wallet on Base Sepolia and the read contracts (USDC balance,
+              vault shares, share value, TVL) update from on-chain state in real time.
             </p>
           </Card>
+
+          <Web3Providers>
+            <VaultFlow />
+          </Web3Providers>
         </section>
 
         <Card label="GUARDIAN · circuit breakers">
@@ -125,15 +93,6 @@ export default function VaultPage() {
           </ul>
         </Card>
       </main>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between text-text-secondary">
-      <span>{label}</span>
-      <span className="mono tabular text-text-primary">{value}</span>
     </div>
   );
 }
