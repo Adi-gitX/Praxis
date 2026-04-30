@@ -98,7 +98,7 @@ narrative; this is the lookup table.
 |---|---|
 | No look-ahead bias | every feature uses `.shift(1)` before being applied; engine only reads `prices.iloc[: i + 1]` per bar |
 | The risk gate is the only chokepoint | grep `git grep -nE 'executor.execute|apply_fill' agent/src/praxis` — only `engine.py` calls them, after `risk_gate.check` |
-| No original-author leftovers | `grep -ri "blockchAIn\|romario\|0x418EBcE\|67c440a8" .` (must be 0 hits) |
+| No original-author leftovers | `grep -ri "blockch[A]In\|[r]omario\|0x418EBcE\|67c440a8" .` (must be 0 hits — character classes prevent this line itself from matching) |
 | Reproducibility | re-run with the same config; the `runs/<ts>_<hash>/` suffix matches; metrics are bit-identical for synthetic data |
 | H05 verdict logic was committed pre-run | `research/build_h05.py` shows the verdict function is part of the template, not added after |
 
