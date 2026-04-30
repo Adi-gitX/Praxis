@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Card } from "@/components/card";
+import { DataSourceBadge } from "@/components/data-source-badge";
 import { EquityCurve } from "@/components/equity-curve";
 import { Nav } from "@/components/nav";
 import { StatBlock } from "@/components/stat-block";
@@ -46,13 +47,16 @@ export default function StrategiesPage() {
     <div className="min-h-screen flex flex-col">
       <Nav />
       <main className="flex-1 px-6 py-8">
-        <header className="max-w-6xl mx-auto">
-          <span className="label">strategies</span>
-          <h1 className="mt-2 text-2xl text-text-primary">registered strategy book</h1>
-          <p className="mt-2 text-sm text-text-secondary max-w-2xl">
-            Each strategy is a pure function: signals → target weights. The meta-policy weights
-            them; the risk gate filters every order they emit.
-          </p>
+        <header className="max-w-6xl mx-auto flex items-end justify-between gap-4">
+          <div>
+            <span className="label">strategies</span>
+            <h1 className="mt-2 text-2xl text-text-primary">registered strategy book</h1>
+            <p className="mt-2 text-sm text-text-secondary max-w-2xl">
+              Each strategy is a pure function: signals → target weights. The meta-policy weights
+              them; the risk gate filters every order they emit.
+            </p>
+          </div>
+          <DataSourceBadge source="seeded" />
         </header>
 
         <section className="max-w-6xl mx-auto mt-8 grid md:grid-cols-2 lg:grid-cols-3 gap-4">
