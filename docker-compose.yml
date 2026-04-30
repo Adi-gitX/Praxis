@@ -1,0 +1,53 @@
+# Praxis · one-command local stack
+#
+# Spins up the Python FastAPI agent and the Next.js operator terminal,
+# wires the UI to the API, and mounts the runs/ directory so the server
+# serves real backtest dumps.
+#
+# Usage:
+#     docker compose up --build
+#     # → http://localhost:3000 (terminal) · http://localhost:8000/docs (API)
+#
+# The agent service exposes /docs (Swagger UI) and /redoc automatically;
+# both are FastAPI defaults.
+
+services:
+  agent:
+    build:
+      context: ./agent
+    container_name: praxis-agent
+    image: praxis-agent:0.1.0
+    ports:
+      - "8000:8000"
+    environment:
+      PRAXIS_RUNS_DIR: /app/runs
+      PRAXIS_CORS_ORIGINS: "http://localhost:3000"
+    volumes:
+      - ./runs:/app/runs:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health',timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  app:
+    build:
+      context: ./app
+    container_name: praxis-app
+    image: praxis-app:0.1.0
+    depends_on:
+      agent:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: "http://localhost:8000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+# No volumes; runs/ is bind-mounted into the agent above.
