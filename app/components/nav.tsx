@@ -11,8 +11,11 @@ const ITEMS = [
   { href: "/terminal", label: "terminal" },
   { href: "/strategies", label: "strategies" },
   { href: "/backtest", label: "backtest" },
+  { href: "/runs", label: "runs" },
+  { href: "/regime", label: "regime" },
   { href: "/risk", label: "risk" },
   { href: "/vault", label: "vault" },
+  { href: "/about/methodology", label: "methodology" },
 ];
 
 export function Nav() {
