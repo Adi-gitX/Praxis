@@ -1,0 +1,149 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: agent · pytest + ruff + mypy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: pipx install poetry==2.3.4
+
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry/virtualenvs
+          key: poetry-${{ runner.os }}-py311-${{ hashFiles('agent/poetry.lock') }}
+          restore-keys: |
+            poetry-${{ runner.os }}-py311-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Lint (ruff)
+        run: poetry run ruff check .
+
+      - name: Type-check (mypy --strict)
+        run: poetry run mypy --strict src/praxis
+
+      - name: Tests (pytest)
+        run: poetry run pytest -q
+
+  contracts:
+    name: contracts · hardhat compile + test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: contracts
+    env:
+      WALLET_KEY: "0x0000000000000000000000000000000000000000000000000000000000000001"
+      ETHERSCAN_API_KEY: "ci-dummy"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: contracts/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile contracts
+        run: npx hardhat compile
+
+      - name: Hardhat tests
+        run: npx hardhat test
+
+  app:
+    name: app · next build + typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+  research:
+    name: research · execute H05 notebook
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: python
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: pipx install poetry==2.3.4
+
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry/virtualenvs
+          key: poetry-${{ runner.os }}-py311-${{ hashFiles('agent/poetry.lock') }}
+          restore-keys: |
+            poetry-${{ runner.os }}-py311-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Execute H05 notebook
+        run: |
+          poetry run jupyter nbconvert \
+            --execute --to notebook --inplace \
+            --ExecutePreprocessor.timeout=900 \
+            ../research/H05_hmm_volatility_regime.ipynb
+
+      - name: Upload executed notebook
+        uses: actions/upload-artifact@v4
+        with:
+          name: H05-executed-${{ github.sha }}
+          path: research/H05_hmm_volatility_regime.ipynb
+          retention-days: 30

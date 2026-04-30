@@ -1,0 +1,50 @@
+# Praxis · pre-commit hooks
+#
+# Install once:
+#     pipx install pre-commit  (or `pip install --user pre-commit`)
+#     pre-commit install
+#
+# Run on every commit. Identical checks run in CI (.github/workflows/ci.yml).
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=2048"]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.4
+    hooks:
+      - id: ruff
+        files: ^agent/
+        args: [--fix]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        files: ^agent/src/praxis/
+        args: ["--strict", "--config-file=agent/pyproject.toml"]
+        additional_dependencies:
+          - pandas-stubs==3.0.0.260204
+          - types-PyYAML==6.0.12.20260408
+          - numpy>=2.2,<3
+          - pandas>=2.2,<3
+          - pydantic>=2.9
+          - fastapi>=0.115
+          - httpx>=0.28
+          - langgraph>=0.2
+
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.7.1
+    hooks:
+      - id: nbstripout
+        files: ^research/.*\.ipynb$
+        args: ["--keep-output"]  # H05 ships with cached outputs intentionally
