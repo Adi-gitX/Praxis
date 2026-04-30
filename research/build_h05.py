@@ -246,7 +246,53 @@ print(f"95% CI (block=24h):    [{ci_lo:.4f}, {ci_hi:.4f}]")
 )
 
 md(
-    "## 9 · Equity curve and tearsheet",
+    "## 9 · Robustness — Combinatorial Purged CV (CPCV)",
+    "",
+    "PurgedKFold gives 5 OOS Sharpes. CPCV with `n_groups=6` and",
+    "`n_test_groups=2` constructs **C(6,2) = 15 distinct backtest paths**",
+    "from the same dataset, yielding a *distribution* of OOS Sharpes rather",
+    "than a single point estimate (López de Prado AFML, ch. 12). Plotting",
+    "the histogram makes the rejection robustness visually unmistakable.",
+)
+
+code(
+    """
+from praxis.backtest.purged_kfold import CombinatorialPurgedKFold
+
+cpcv = CombinatorialPurgedKFold(n_groups=6, n_test_groups=2, label_horizon=168, embargo_pct=0.01)
+cpcv_sharpes = []
+for train_idx, test_idx in cpcv.split(returns_arr):
+    cpcv_sharpes.append(sharpe(returns_arr[test_idx], periods_per_year=24*365))
+cpcv_sharpes_arr = np.array(cpcv_sharpes)
+print(f"n paths: {len(cpcv_sharpes_arr)}")
+print(f"mean: {cpcv_sharpes_arr.mean():.4f}")
+print(f"std:  {cpcv_sharpes_arr.std(ddof=0):.4f}")
+print(f"min:  {cpcv_sharpes_arr.min():.4f}")
+print(f"max:  {cpcv_sharpes_arr.max():.4f}")
+print(f"frac > 0: {(cpcv_sharpes_arr > 0).mean():.3f}")
+"""
+)
+
+code(
+    """
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots(figsize=(8, 3.5))
+ax.hist(cpcv_sharpes_arr, bins=12, color='#6E7BFF', edgecolor='#08090A', alpha=0.85)
+ax.axvline(0.0, color='#E6E8EB', lw=1.2, ls='--', label='SR = 0')
+ax.axvline(cpcv_sharpes_arr.mean(), color='#FF5C5C', lw=1.4, label=f'mean {cpcv_sharpes_arr.mean():.3f}')
+ax.set_facecolor('#0E0F11'); ax.set_xlabel('OOS Sharpe per CPCV path'); ax.set_ylabel('count')
+ax.legend(loc='upper right'); ax.grid(alpha=0.15)
+for spine in ax.spines.values():
+    spine.set_color('#3A4048')
+fig.patch.set_facecolor('#08090A')
+fig.suptitle('H05 · CPCV path-Sharpe distribution (15 paths)', color='#E6E8EB')
+fig.tight_layout()
+plt.show()
+"""
+)
+
+md(
+    "## 10 · Equity curve and regime overlay",
 )
 
 code(
@@ -275,7 +321,7 @@ plt.show()
 )
 
 md(
-    "## 10 · Verdict",
+    "## 11 · Verdict",
     "",
     "Deterministic logic, committed before running the cells above:",
 )
@@ -298,6 +344,8 @@ print(f'  Sharpe 95% CI [block=24h]:    [{ci_lo:.4f}, {ci_hi:.4f}]')
 print(f'  Probabilistic Sharpe (>0):    {psr:.4f}')
 print(f'  Deflated Sharpe (N=6):        {dsr:.4f}')
 print(f'  OOS mean Sharpe (PurgedKFold): {oos_sharpe:.4f}')
+print(f'  CPCV mean Sharpe (15 paths):   {cpcv_sharpes_arr.mean():.4f}')
+print(f'  CPCV frac > 0:                 {(cpcv_sharpes_arr > 0).mean():.3f}')
 print(f'  Final equity:                  {equity.iloc[-1]:.4f}')
 print(f'  Total bars:                    {len(net_returns):,}')
 """
