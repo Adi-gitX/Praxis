@@ -1,4 +1,5 @@
 import { Card } from "@/components/card";
+import { DataSourceBadge } from "@/components/data-source-badge";
 import { DataTable, type Column } from "@/components/data-table";
 import { EquityCurve } from "@/components/equity-curve";
 import { Nav } from "@/components/nav";
@@ -118,7 +119,10 @@ export default function TerminalPage() {
           <StatBlock label="SHARPE 30D" value={fmtNum(metrics.sharpe, 4)} tone="pos" size="sm" />
           <StatBlock label="MAX DD" value={fmtPct(metrics.maxDrawdown, 2)} tone="neg" size="sm" />
           <StatBlock label="GROSS" value={fmtPct(0.94, 2)} size="sm" />
-          <div className="ml-auto"><StatusPill status="paper" /></div>
+          <div className="ml-auto flex items-center gap-2">
+            <DataSourceBadge source="seeded" />
+            <StatusPill status="paper" />
+          </div>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 grid-rows-[1fr_1fr] gap-4 min-h-0">
